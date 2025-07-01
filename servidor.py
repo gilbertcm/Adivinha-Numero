@@ -7,13 +7,13 @@ def handle_client(conn, addr):
     numero_secreto = random.randint(1, 100)
     tentativas = 0
 
-    conn.sendall("Bem-vindo ao jogo! Adivinhe um número entre 1 e 100:\n")
+    conn.sendall("Bem-vindo ao jogo! Adivinhe um número entre 1 e 100:\n".encode())
     
     while True:
         tentativa = conn.recv(1024).decode().strip()
         tentativas += 1
         if not tentativa.isdigit():
-            conn.sendall("Digite um número valido!\n")
+            conn.sendall("Digite um número valido!\n".encode())
             continue
 
         chute = int(tentativa)

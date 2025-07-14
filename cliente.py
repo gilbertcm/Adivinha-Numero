@@ -1,23 +1,21 @@
 import socket
 
 def main():
-    HOST = 'localhost'
+    HOST = input("Digite o IP do servidor: ")  
     PORT = 12345
 
     cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cliente.connect((HOST, PORT))
 
-    mensagem = cliente.recv(1024).decode()
-    print(mensagem.strip())
-
     while True:
-        entrada = input("Seu palpite: ")
-        cliente.sendall(entrada.encode())
+        msg = cliente.recv(1024).decode().strip()
+        print(f"[Servidor] {msg}")
 
-        resposta = cliente.recv(1024).decode()
-        print("Servidor:", resposta.strip())
+        if msg == "SUA_VEZ":
+            palpite = input("Seu palpite: ")
+            cliente.sendall(f"PALPITE:{palpite}\n".encode())
 
-        if "ACERTOU" in resposta:
+        elif msg.startswith("FIM:"):
             break
 
     cliente.close()

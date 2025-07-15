@@ -1,4 +1,3 @@
-# servidor.py
 
 import socket
 import threading

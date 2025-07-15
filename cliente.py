@@ -1,13 +1,11 @@
-# cliente.py
 
 import socket
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-# IMPORTANTE: Altere o HOST para o endereço IP do computador que está rodando o servidor.
-# Se estiver rodando na mesma máquina, use '127.0.0.1' ou 'localhost'.
-HOST = '127.0.0.1'
+
+HOST = '192.168.1.3'
 PORT = 8080
 
 class JogoGUI:

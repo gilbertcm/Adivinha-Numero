@@ -1,15 +1,12 @@
-# cliente.py
-
 import socket
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
-import subprocess # <--- MUDANÇA: Importado para iniciar o servidor
-import sys        # <--- MUDANÇA: Importado para encontrar o executável do Python
-import time       # <--- MUDANÇA: Importado para adicionar pausas
+import subprocess 
+import sys        
+import time       
 
-# IMPORTANTE: Altere o HOST para o endereço IP do computador que está rodando o servidor.
-# Se estiver rodando na mesma máquina, use '127.0.0.1' ou 'localhost'.
+
 HOST = '127.0.0.1'
 PORT = 8080
 

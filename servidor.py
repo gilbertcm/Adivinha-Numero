@@ -1,5 +1,3 @@
-# servidor.py
-
 import socket
 import threading
 import random
@@ -17,7 +15,7 @@ class Game:
         self.vez = 0
         self.venceu = False
         self.turn_event = threading.Event()
-        self.barreira = threading.Barrier(2) # Sincroniza o início do jogo
+        self.barreira = threading.Barrier(2) 
         self.wait_msg_sent = [False, False]
 
     def add_player(self, conn, addr):
@@ -60,7 +58,7 @@ class Game:
                     try:
                         conn.sendall("Aguarde sua vez...\n".encode('utf-8'))
                     except:
-                        break # Encerra se o cliente desconectou
+                        break 
                     self.wait_msg_sent[player_id] = True
                 time.sleep(0.05)
                 continue
@@ -74,11 +72,11 @@ class Game:
                     conn.sendall(msg_sua_vez.encode('utf-8'))
                     
                     data = conn.recv(1024).decode('utf-8').strip()
-                    if not data: # Cliente desconectou
+                    if not data: 
                         break
                     palpite = int(data)
 
-                except (ValueError, TypeError): # Se a entrada não for um número
+                except (ValueError, TypeError): 
                     try:
                         conn.sendall("Entrada inválida. Tente novamente.\n".encode('utf-8'))
                     except:
@@ -98,7 +96,7 @@ class Game:
                     else: # O jogador acertou
                         self.venceu = True
                         self.mostrar_resultado(player_id)
-                        self.turn_event.set() # Libera a outra thread para que ela possa sair do loop
+                        self.turn_event.set() 
                         break
 
                     # Passa a vez para o outro jogador
@@ -132,11 +130,11 @@ class Game:
                 pass
 
 def main():
-    HOST = '0.0.0.0' # Aceita conexões de qualquer IP
+    HOST = '0.0.0.0' 
     PORT = 8080
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Permite reutilizar o endereço
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
     server.bind((HOST, PORT))
     server.listen(2)
     print(f"Servidor iniciado na porta {PORT}. Aguardando jogadores...")

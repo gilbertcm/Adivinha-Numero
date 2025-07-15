@@ -12,7 +12,7 @@ class Game:
         self.vez = 0
         self.venceu = False
         self.turn_event = threading.Event()
-        self.turn_event.set()  # Vez do jogador 0 começa liberada
+        self.barreira = threading.Barrier(2)  
         self.wait_msg_sent = [False, False]
 
     def add_player(self, conn, addr):
@@ -24,19 +24,26 @@ class Game:
         conn = self.jogadores[player_id]['conn']
         conn.sendall("Bem-vindo ao jogo de Adivinhação!\n".encode('utf-8'))
 
+        # Aguarda os dois jogadores se conectarem antes de começar
+        try:
+            conn.sendall("Aguardando o outro jogador entrar...\n".encode('utf-8'))
+            self.barreira.wait()
+            if player_id == 0:
+                self.turn_event.set() 
+        except threading.BrokenBarrierError:
+            conn.sendall("Erro ao sincronizar jogadores.\n".encode('utf-8'))
+            conn.close()
+            return
+
         while not self.venceu:
             if self.vez != player_id:
-                # Espera o evento da vez do jogador
                 self.turn_event.wait()
-
-                # Envia mensagem de aguarde apenas uma vez
                 if not self.wait_msg_sent[player_id]:
                     try:
                         conn.sendall("Aguarde sua vez...\n".encode('utf-8'))
                     except:
                         break
                     self.wait_msg_sent[player_id] = True
-                # Pequena pausa para não travar a CPU
                 time.sleep(0.05)
                 continue
             else:
@@ -65,7 +72,6 @@ class Game:
                         self.mostrar_resultado(player_id)
                         break
 
-                    # Troca a vez
                     self.vez = 1 - player_id
                     self.turn_event.clear()
                     self.turn_event.set()
@@ -100,7 +106,7 @@ def main():
         threading.Thread(target=game.handle_client, args=(player_id,), daemon=True).start()
         print(f"Jogador {player_id + 1} conectado de {addr}")
 
-    # Mantém o servidor rodando
+    # Mantém o servidor vivo
     while True:
         time.sleep(1)
 

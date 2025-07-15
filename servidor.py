@@ -12,7 +12,7 @@ class Game:
         self.vez = 0
         self.venceu = False
         self.turn_event = threading.Event()
-        self.barreira = threading.Barrier(2)  
+        self.barreira = threading.Barrier(2)
         self.wait_msg_sent = [False, False]
 
     def add_player(self, conn, addr):
@@ -24,20 +24,25 @@ class Game:
         conn = self.jogadores[player_id]['conn']
         conn.sendall("Bem-vindo ao jogo de Adivinhação!\n".encode('utf-8'))
 
-        # Aguarda os dois jogadores se conectarem antes de começar
+        # Espera ambos os jogadores entrarem
         try:
             conn.sendall("Aguardando o outro jogador entrar...\n".encode('utf-8'))
             self.barreira.wait()
             if player_id == 0:
-                self.turn_event.set() 
+                self.turn_event.set()
         except threading.BrokenBarrierError:
             conn.sendall("Erro ao sincronizar jogadores.\n".encode('utf-8'))
             conn.close()
             return
 
-        while not self.venceu:
+        while True:
+            if self.venceu:
+                break
+
             if self.vez != player_id:
                 self.turn_event.wait()
+                if self.venceu:
+                    break
                 if not self.wait_msg_sent[player_id]:
                     try:
                         conn.sendall("Aguarde sua vez...\n".encode('utf-8'))
@@ -70,22 +75,35 @@ class Game:
                     else:
                         self.venceu = True
                         self.mostrar_resultado(player_id)
+                        self.turn_event.set()  # Libera o outro jogador
                         break
 
                     self.vez = 1 - player_id
                     self.turn_event.clear()
                     self.turn_event.set()
 
+        # Fecha a conexão no final
+        try:
+            conn.shutdown(socket.SHUT_RDWR)
+        except:
+            pass
         conn.close()
 
     def mostrar_resultado(self, vencedor_id):
-        msg = (f"\n🎉 Fim do jogo! Jogador {vencedor_id + 1} acertou com "
-               f"{self.tentativas[vencedor_id]} tentativas!\n")
+        numero = self.numero_secreto
         for i, jogador in enumerate(self.jogadores):
             try:
+                if i == vencedor_id:
+                    msg = (f"\n🎉 Parabéns! Você acertou o número {numero} com "
+                           f"{self.tentativas[i]} tentativa(s)!\n")
+                else:
+                    msg = (f"\n😞 Você errou. O número era {numero}. "
+                           f"O jogador {vencedor_id + 1} venceu com {self.tentativas[vencedor_id]} tentativa(s).\n")
+
                 jogador['conn'].sendall(msg.encode('utf-8'))
-                stats = f"Jogador {i + 1} fez {self.tentativas[i]} tentativas.\n"
-                jogador['conn'].sendall(stats.encode('utf-8'))
+
+                resumo = f"Resumo: Jogador {i + 1} fez {self.tentativas[i]} tentativa(s).\n"
+                jogador['conn'].sendall(resumo.encode('utf-8'))
             except:
                 pass
 
@@ -106,7 +124,7 @@ def main():
         threading.Thread(target=game.handle_client, args=(player_id,), daemon=True).start()
         print(f"Jogador {player_id + 1} conectado de {addr}")
 
-    # Mantém o servidor vivo
+    # Mantém o servidor ativo
     while True:
         time.sleep(1)
 

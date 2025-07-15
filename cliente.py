@@ -45,10 +45,10 @@ class JogoGUI:
         self.enviar_btn = tk.Button(master, text="Enviar Palpite", command=self.enviar_palpite, font=("Helvetica", 12), state="disabled", bg="#444", fg="white", activebackground="#555")
         self.enviar_btn.pack()
 
-        self.feedback = tk.Label(master, text="", font=("Helvetica", 16, "bold"), fg="white", bg="#222", height=2)
+        self.feedback = tk.Label(master, text="", font=("Helvetica", 18, "bold"), fg="white", bg="#222", height=2)
         self.feedback.pack(pady=20)
 
-        self.info = tk.Label(master, text="", font=("Helvetica", 10), fg="#aaa", bg="#222", justify="center", wraplength=380)
+        self.info = tk.Label(master, text="", font=("Helvetica", 11), fg="#aaa", bg="#222", justify="center", wraplength=380)
         self.info.pack(side="bottom", pady=10)
 
         threading.Thread(target=self.conectar_ao_servidor, daemon=True).start()
@@ -97,15 +97,26 @@ class JogoGUI:
         """
         Interpreta a mensagem do servidor e atualiza a interface gráfica.
         """
-        # Primeiro, verifica se é uma mensagem de fim de jogo
+        # <--- MUDANÇA: Lógica de Fim de Jogo Aprimorada ---
         if "🎉" in msg or "😞" in msg:
             self.input_entry.config(state="disabled")
             self.enviar_btn.config(state="disabled")
             self.status.config(text="🏁 Jogo encerrado!", fg="white")
             self.progress.stop()
             self.progress.pack_forget()
-            self.feedback.config(text="")
-            self.info.config(text=msg, font=("Helvetica", 12, "bold"), fg="#FFD700") # Dourado
+            
+            # Limpa o texto informativo para dar espaço ao resumo final
+            self.info.config(text="") 
+
+            if "🎉" in msg: # Mensagem de vitória
+                self.feedback.config(text="🎉 VOCÊ VENCEU! 🎉", fg="#22DD22") # Verde Vibrante
+                # Exibe os detalhes da vitória no rodapé
+                self.info.config(text=msg.strip(), font=("Helvetica", 11), fg="#DDDDDD")
+            
+            elif "😞" in msg: # Mensagem de derrota
+                self.feedback.config(text="😞 VOCÊ PERDEU 😞", fg="#FF4444") # Vermelho Vibrante
+                # Exibe os detalhes da derrota no rodapé
+                self.info.config(text=msg.strip(), font=("Helvetica", 11), fg="#AAAAAA")
             return
 
         # Mensagens durante o jogo
@@ -121,13 +132,17 @@ class JogoGUI:
             self.feedback.config(text="🔺 O número é MAIOR", fg="#FFA500") # Laranja
         elif "menor" in msg.lower():
             self.feedback.config(text="🔻 O número é MENOR", fg="#1E90FF") # Azul
+            
+        # <--- MUDANÇA: Lógica para Aguardar ---
         elif "Aguarde" in msg or "Aguardando" in msg:
-            self.status.config(text="⏳ Aguardando sua vez...", fg="#aaa")
+            self.status.config(text="⏳ " + msg, fg="#aaa")
+            # Garante que a barra de progresso esteja visível e no lugar certo
             if not self.progress.winfo_ismapped():
-                self.progress.pack(pady=10)
+                self.progress.pack(pady=10, after=self.status) # <-- Garante a posição correta
             self.progress.start()
             self.input_entry.config(state="disabled")
             self.enviar_btn.config(state="disabled")
+            
         elif "Bem-vindo" in msg:
              self.info.config(text=msg)
 

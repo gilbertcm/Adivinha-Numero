@@ -1,6 +1,7 @@
 import socket
 
-HOST = '192.168.0.105'  # IP do servidor, altere conforme sua rede
+
+HOST = '192.168.1.3'
 PORT = 8080
 
 def main():
@@ -11,7 +12,6 @@ def main():
         while True:
             data = s.recv(1024).decode('utf-8')
             if not data:
-                print("Conexão encerrada pelo servidor.")
                 break
 
             print(data)

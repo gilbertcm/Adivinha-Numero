@@ -4,6 +4,9 @@ import socket
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
+import subprocess # <--- MUDANÇA: Importado para iniciar o servidor
+import sys        # <--- MUDANÇA: Importado para encontrar o executável do Python
+import time       # <--- MUDANÇA: Importado para adicionar pausas
 
 # IMPORTANTE: Altere o HOST para o endereço IP do computador que está rodando o servidor.
 # Se estiver rodando na mesma máquina, use '127.0.0.1' ou 'localhost'.
@@ -59,17 +62,60 @@ class JogoGUI:
             self.sock.close()
         self.master.destroy()
 
+    # <--- MUDANÇA: Lógica de conexão atualizada ---
     def conectar_ao_servidor(self):
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((HOST, PORT))
-            self.is_connected = True
-            # Inicia a thread para receber mensagens
-            threading.Thread(target=self.receber_mensagens, daemon=True).start()
-        except Exception as e:
-            self.status.config(text="❌ Falha ao conectar.")
-            messagebox.showerror("Erro de Conexão", f"Não foi possível conectar ao servidor em {HOST}:{PORT}.\nVerifique o IP e se o servidor está rodando.\n\nDetalhes: {e}")
-            self.master.after(0, self.on_closing)
+        """
+        Tenta conectar ao servidor. Se falhar, tenta iniciar o servidor
+        e tenta conectar novamente.
+        """
+        tentativas = 3
+        servidor_iniciado = False
+        for i in range(tentativas):
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.connect((HOST, PORT))
+                self.is_connected = True
+                
+                # Inicia a thread para receber mensagens
+                threading.Thread(target=self.receber_mensagens, daemon=True).start()
+                # Se conectou, sai do loop
+                return 
+
+            except ConnectionRefusedError:
+                # Se a conexão foi recusada, o servidor provavelmente não está rodando.
+                if not servidor_iniciado:
+                    self.master.after(0, self.status.config, {"text": "🔍 Servidor não encontrado. Tentando iniciar..."})
+                    try:
+                        # Tenta iniciar o servidor.py usando o mesmo interpretador Python.
+                        # Isso garante que funcione mesmo em ambientes virtuais (venv).
+                        # O servidor.py deve estar na mesma pasta que o cliente.py.
+                        subprocess.Popen([sys.executable, "servidor.py"])
+                        servidor_iniciado = True
+                        self.master.after(0, self.status.config, {"text": "✅ Servidor iniciado. Tentando conectar..."})
+                        
+                    except FileNotFoundError:
+                        messagebox.showerror("Erro Crítico", "O arquivo 'servidor.py' não foi encontrado na mesma pasta.")
+                        self.master.after(0, self.on_closing)
+                        return
+                    except Exception as e:
+                        messagebox.showerror("Erro ao iniciar Servidor", f"Não foi possível iniciar o processo do servidor.\n\nDetalhes: {e}")
+                        self.master.after(0, self.on_closing)
+                        return
+                
+                # Espera um pouco para o servidor iniciar antes da próxima tentativa
+                time.sleep(2) 
+
+            except Exception as e:
+                # Lida com outros erros de conexão
+                messagebox.showerror("Erro de Conexão", f"Ocorreu um erro inesperado.\n\nDetalhes: {e}")
+                self.master.after(0, self.on_closing)
+                return
+
+        # Se o loop terminar sem sucesso, a conexão falhou.
+        self.master.after(0, self.status.config, {"text": "❌ Falha ao conectar."})
+        messagebox.showerror("Erro de Conexão", f"Não foi possível conectar ao servidor em {HOST}:{PORT} após várias tentativas.\nVerifique o IP e as configurações de firewall.")
+        self.master.after(0, self.on_closing)
+
 
     def receber_mensagens(self):
         """
@@ -95,9 +141,8 @@ class JogoGUI:
 
     def tratar_mensagem(self, msg):
         """
-        Interpreta a mensagem do servidor e atualiza a interface gráfica.
+        Interpreta a mensagem do servidor e atualiza la interface gráfica.
         """
-        # <--- MUDANÇA: Lógica de Fim de Jogo Aprimorada ---
         if "🎉" in msg or "😞" in msg:
             self.input_entry.config(state="disabled")
             self.enviar_btn.config(state="disabled")
@@ -105,21 +150,17 @@ class JogoGUI:
             self.progress.stop()
             self.progress.pack_forget()
             
-            # Limpa o texto informativo para dar espaço ao resumo final
             self.info.config(text="") 
 
-            if "🎉" in msg: # Mensagem de vitória
-                self.feedback.config(text="🎉 VOCÊ VENCEU! 🎉", fg="#22DD22") # Verde Vibrante
-                # Exibe os detalhes da vitória no rodapé
+            if "🎉" in msg:
+                self.feedback.config(text="🎉 VOCÊ VENCEU! 🎉", fg="#22DD22")
                 self.info.config(text=msg.strip(), font=("Helvetica", 11), fg="#DDDDDD")
             
-            elif "😞" in msg: # Mensagem de derrota
-                self.feedback.config(text="😞 VOCÊ PERDEU 😞", fg="#FF4444") # Vermelho Vibrante
-                # Exibe os detalhes da derrota no rodapé
+            elif "😞" in msg:
+                self.feedback.config(text="😞 VOCÊ PERDEU 😞", fg="#FF4444")
                 self.info.config(text=msg.strip(), font=("Helvetica", 11), fg="#AAAAAA")
             return
 
-        # Mensagens durante o jogo
         if "Sua vez" in msg:
             self.status.config(text="🎯 Sua vez!", fg="lime")
             self.progress.stop()
@@ -129,16 +170,14 @@ class JogoGUI:
             self.enviar_btn.config(state="normal")
             self.input_entry.focus()
         elif "maior" in msg.lower():
-            self.feedback.config(text="🔺 O número é MAIOR", fg="#FFA500") # Laranja
+            self.feedback.config(text="🔺 O número é MAIOR", fg="#FFA500")
         elif "menor" in msg.lower():
-            self.feedback.config(text="🔻 O número é MENOR", fg="#1E90FF") # Azul
+            self.feedback.config(text="🔻 O número é MENOR", fg="#1E90FF")
             
-        # <--- MUDANÇA: Lógica para Aguardar ---
         elif "Aguarde" in msg or "Aguardando" in msg:
             self.status.config(text="⏳ " + msg, fg="#aaa")
-            # Garante que a barra de progresso esteja visível e no lugar certo
             if not self.progress.winfo_ismapped():
-                self.progress.pack(pady=10, after=self.status) # <-- Garante a posição correta
+                self.progress.pack(pady=10, after=self.status)
             self.progress.start()
             self.input_entry.config(state="disabled")
             self.enviar_btn.config(state="disabled")

@@ -4,7 +4,9 @@ import time
 def descobrir_servidor(timeout=10):
     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    udp.bind(('', 54545))
+    udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    udp.bind(('', 0))  # Porta 0 = aleatória (evita conflito)
     udp.settimeout(timeout)
 
     print("Procurando servidor...")

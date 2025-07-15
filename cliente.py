@@ -4,9 +4,7 @@ import time
 def descobrir_servidor(timeout=10):
     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    
-    udp.bind(('', 0))  # Porta 0 = aleatória (evita conflito)
+    udp.bind(('', 54545))
     udp.settimeout(timeout)
 
     print("Procurando servidor...")
@@ -38,18 +36,26 @@ def main():
 
     try:
         while True:
-            msg = cliente.recv(1024).decode().strip()
+            msg = cliente.recv(1024).decode()
             if not msg:
                 break
-            print(f"[Servidor] {msg}")
 
-            if msg == "SUA_VEZ":
-                palpite = input("Seu palpite: ")
-                cliente.sendall(f"PALPITE:{palpite}\n".encode())
+            mensagens = msg.strip().split('\n')
+            for linha in mensagens:
+                if not linha:
+                    continue
 
-            elif msg.startswith("FIM:"):
-                print("Fim de jogo.")
-                break
+                print(f"[Servidor] {linha}")
+
+                if linha == "SUA_VEZ":
+                    palpite = input("Seu palpite: ")
+                    cliente.sendall(f"PALPITE:{palpite}\n".encode())
+                elif linha == "AGUARDE_VEZ":
+                    print("Aguardando sua vez...")
+                    time.sleep(1)
+                elif linha.startswith("FIM:"):
+                    print("Fim de jogo.")
+                    return
     except KeyboardInterrupt:
         print("Conexão encerrada pelo usuário.")
     finally:

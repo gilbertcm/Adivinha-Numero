@@ -74,6 +74,17 @@ def handle_client(conn, jogador_id):
 
     conn.close()
 
+def get_ip_local():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+    except:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
+
 def main():
     HOST = '0.0.0.0'
     PORT = 12345
@@ -83,14 +94,7 @@ def main():
     servidor.bind((HOST, PORT))
     servidor.listen(2)
 
-    # Obtém o IP local de forma confiável
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip_local = s.getsockname()[0]
-    finally:
-        s.close()
-
+    ip_local = get_ip_local()
     print(f"[SERVIDOR] Rodando em {ip_local}:{PORT}")
 
     threading.Thread(target=broadcast_discovery, daemon=True).start()

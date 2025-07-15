@@ -1,65 +1,27 @@
 import socket
-import time
 
-def descobrir_servidor(timeout=10):
-    udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    udp.bind(('', 54545))
-    udp.settimeout(timeout)
 
-    print("Procurando servidor...")
-    try:
-        msg, addr = udp.recvfrom(1024)
-        if msg.startswith(b'SERVIDOR_JOGO:'):
-            porta = int(msg.decode().split(':')[1])
-            print(f"Servidor encontrado em {addr[0]}:{porta}")
-            return addr[0], porta
-    except socket.timeout:
-        print("Tempo esgotado. Servidor não encontrado.")
-    finally:
-        udp.close()
-
-    return None, None
+HOST = '192.168.1.3'
+PORT = 8080
 
 def main():
-    HOST, PORT = descobrir_servidor()
-    if not HOST:
-        print("Não foi possível encontrar o servidor.")
-        return
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+        print("Conectado ao servidor.\n")
 
-    try:
-        cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        cliente.connect((HOST, PORT))
-    except Exception as e:
-        print(f"Erro ao conectar ao servidor: {e}")
-        return
-
-    try:
         while True:
-            msg = cliente.recv(1024).decode()
-            if not msg:
+            data = s.recv(1024).decode('utf-8')
+            if not data:
                 break
 
-            mensagens = msg.strip().split('\n')
-            for linha in mensagens:
-                if not linha:
-                    continue
+            print(data)
 
-                print(f"[Servidor] {linha}")
+            if "Sua vez" in data:
+                palpite = input("Seu palpite: ")
+                s.sendall(palpite.encode('utf-8'))
 
-                if linha == "SUA_VEZ":
-                    palpite = input("Seu palpite: ")
-                    cliente.sendall(f"PALPITE:{palpite}\n".encode())
-                elif linha == "AGUARDE_VEZ":
-                    print("Aguardando sua vez...")
-                    time.sleep(1)
-                elif linha.startswith("FIM:"):
-                    print("Fim de jogo.")
-                    return
-    except KeyboardInterrupt:
-        print("Conexão encerrada pelo usuário.")
-    finally:
-        cliente.close()
+            if "Fim do jogo" in data or "🎉" in data:
+                break
 
 if __name__ == "__main__":
     main()

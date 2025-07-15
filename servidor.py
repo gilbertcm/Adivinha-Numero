@@ -11,6 +11,9 @@ class Game:
         self.tentativas = [0, 0]
         self.vez = 0
         self.venceu = False
+        self.turn_event = threading.Event()
+        self.turn_event.set()  # Vez do jogador 0 começa liberada
+        self.wait_msg_sent = [False, False]
 
     def add_player(self, conn, addr):
         player_id = len(self.jogadores)
@@ -22,47 +25,63 @@ class Game:
         conn.sendall("Bem-vindo ao jogo de Adivinhação!\n".encode('utf-8'))
 
         while not self.venceu:
-            with self.lock:
-                if len(self.jogadores) < 2:
-                    conn.sendall("Aguardando o segundo jogador se conectar...\n".encode('utf-8'))
-                    time.sleep(1)
-                    continue
+            if self.vez != player_id:
+                # Espera o evento da vez do jogador
+                self.turn_event.wait()
 
-                if self.vez != player_id:
-                    conn.sendall("Aguarde sua vez...\n".encode('utf-8'))
-                    time.sleep(1)
-                    continue
-
-                conn.sendall("Sua vez! Digite um número entre 1 e 100: ".encode('utf-8'))
+                # Envia mensagem de aguarde apenas uma vez
+                if not self.wait_msg_sent[player_id]:
+                    try:
+                        conn.sendall("Aguarde sua vez...\n".encode('utf-8'))
+                    except:
+                        break
+                    self.wait_msg_sent[player_id] = True
+                # Pequena pausa para não travar a CPU
+                time.sleep(0.05)
+                continue
+            else:
+                self.wait_msg_sent[player_id] = False
                 try:
-                    data = conn.recv(1024).decode('utf-8')
+                    conn.sendall("Sua vez! Digite um número entre 1 e 100: ".encode('utf-8'))
+                    data = conn.recv(1024).decode('utf-8').strip()
                     if not data:
                         break
-                    palpite = int(data.strip())
+                    palpite = int(data)
                 except:
-                    conn.sendall("Entrada inválida. Tente novamente.\n".encode('utf-8'))
+                    try:
+                        conn.sendall("Entrada inválida. Tente novamente.\n".encode('utf-8'))
+                    except:
+                        break
                     continue
 
-                self.tentativas[player_id] += 1
+                with self.lock:
+                    self.tentativas[player_id] += 1
+                    if palpite < self.numero_secreto:
+                        conn.sendall("O número é maior!\n".encode('utf-8'))
+                    elif palpite > self.numero_secreto:
+                        conn.sendall("O número é menor!\n".encode('utf-8'))
+                    else:
+                        self.venceu = True
+                        self.mostrar_resultado(player_id)
+                        break
 
-                if palpite < self.numero_secreto:
-                    conn.sendall("O número é maior!\n".encode('utf-8'))
-                elif palpite > self.numero_secreto:
-                    conn.sendall("O número é menor!\n".encode('utf-8'))
-                else:
-                    self.venceu = True
-                    self.mostrar_resultado(player_id)
-                    break
-
-                self.vez = 1 - player_id  # troca a vez
+                    # Troca a vez
+                    self.vez = 1 - player_id
+                    self.turn_event.clear()
+                    self.turn_event.set()
 
         conn.close()
 
     def mostrar_resultado(self, vencedor_id):
+        msg = (f"\n🎉 Fim do jogo! Jogador {vencedor_id + 1} acertou com "
+               f"{self.tentativas[vencedor_id]} tentativas!\n")
         for i, jogador in enumerate(self.jogadores):
-            msg = f"\n🎉 Fim do jogo! Jogador {vencedor_id + 1} acertou com {self.tentativas[vencedor_id]} tentativas!\n"
-            msg += f"Jogador {i + 1} fez {self.tentativas[i]} tentativas.\n"
-            jogador['conn'].sendall(msg.encode('utf-8'))
+            try:
+                jogador['conn'].sendall(msg.encode('utf-8'))
+                stats = f"Jogador {i + 1} fez {self.tentativas[i]} tentativas.\n"
+                jogador['conn'].sendall(stats.encode('utf-8'))
+            except:
+                pass
 
 def main():
     HOST = '0.0.0.0'
@@ -71,15 +90,19 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
     server.listen(2)
-    print("Servidor de Adivinhação iniciado na porta 8080.\nAguardando jogadores...")
+    print("Servidor iniciado na porta 8080. Aguardando jogadores...")
 
     game = Game()
 
     while len(game.jogadores) < 2:
         conn, addr = server.accept()
         player_id = game.add_player(conn, addr)
-        threading.Thread(target=game.handle_client, args=(player_id,)).start()
+        threading.Thread(target=game.handle_client, args=(player_id,), daemon=True).start()
         print(f"Jogador {player_id + 1} conectado de {addr}")
+
+    # Mantém o servidor rodando
+    while True:
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()

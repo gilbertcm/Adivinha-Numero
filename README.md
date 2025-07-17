@@ -1,5 +1,7 @@
 # 🎯 Jogo "Adivinha o Número" — Cliente com Interface Gráfica (Tkinter)
 
+# Integrantes: André, Breno, Ezequiel e Gilbert
+
 ## 🧠 Propósito do Projeto
 Este projeto implementa um jogo de adivinhação de número secreto, com comunicação entre **cliente e servidor via socket TCP**.  
 O cliente possui uma **interface gráfica feita com Tkinter**, onde o usuário envia palpites numéricos e recebe feedback do servidor informando se o número correto é maior, menor ou se acertou.

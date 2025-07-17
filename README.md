@@ -25,11 +25,11 @@ O protocolo utilizado é o **TCP (Transmission Control Protocol)**, garantindo:
 
 ---
 
-## 📁 Estrutura do Projeto
+### 📁 Estrutura do Projeto
 /projeto/
-├── cliente.py # Interface gráfica do jogador
-├── servidor.py # Lógica principal do jogo (backend)
-└── README.md # Documentação do projeto
+├── cliente.py       # Interface gráfica do jogador
+├── servidor.py      # Lógica principal do jogo (backend)
+└── README.md        # Documentação do projeto
 
 ---
 

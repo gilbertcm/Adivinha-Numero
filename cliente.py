@@ -7,7 +7,7 @@ import sys
 import time       
 
 
-HOST = '192.168.1.3'
+HOST = '192.168.56.1'
 PORT = 8080
 
 class JogoGUI:

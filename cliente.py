@@ -59,7 +59,7 @@ class JogoGUI:
             self.sock.close()
         self.master.destroy()
 
-    # <--- MUDANÇA: Lógica de conexão atualizada ---
+    
     def conectar_ao_servidor(self):
         """
         Tenta conectar ao servidor. Se falhar, tenta iniciar o servidor

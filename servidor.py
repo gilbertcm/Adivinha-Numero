@@ -1,3 +1,5 @@
+#Integrantes: André, Breno, Ezequiel e Gilbert
+
 import socket
 import threading
 import random
